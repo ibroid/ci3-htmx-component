@@ -1,0 +1,20 @@
+# Composer
+/vendor/
+/composer.lock
+
+# CI3 Cache/Logs
+/application/cache/*
+!/application/cache/index.html
+/application/logs/*
+!/application/logs/index.html
+
+# IDE
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+*.idea/
+*.vscode/
+.DS_Store
+Thumbs.db

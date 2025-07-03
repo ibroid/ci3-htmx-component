@@ -1,0 +1,16 @@
+{
+  "name": "ibroid/ci3-htmx-component",
+  "description": "Mini Livewire-style HTMX component system for CodeIgniter 3",
+  "type": "library",
+  "require": {
+    "php": ">=7.4"
+  },
+  "autoload": {
+    "psr-4": {
+      "CI3Htmx\\": "src/"
+    }
+  },
+  "extra": {
+    "ci3htmx-view-path": "views/"
+  }
+}
