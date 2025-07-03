@@ -17,7 +17,7 @@ Mini framework Livewire-like untuk CodeIgniter 3 menggunakan HTMX with Painless 
 ### 1. Tambahkan ke composer.json (jika lokal)
 
 ```bash
-composer require yourvendor/ci3-htmx-component
+composer require ibroid/ci3-htmx-component
 ```
 
 ### 2. Aktifkan autoload di CodeIgniter 3
