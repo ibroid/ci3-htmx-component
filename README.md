@@ -42,10 +42,10 @@ Tambahkan file ini ke `application/controllers`:
 
 ```php
 // HtmxComponent.php
-require_once APPPATH . 'vendor/yourvendor/ci3-htmx-component/src/Controller/HtmxComponent.php';
+require_once APPPATH . 'vendor/ibroid/ci3-htmx-component/src/Controller/HtmxComponent.php';
 
 // HtmxAction.php
-require_once APPPATH . 'vendor/yourvendor/ci3-htmx-component/src/Controller/HtmxAction.php';
+require_once APPPATH . 'vendor/ibroid/ci3-htmx-component/src/Controller/HtmxAction.php';
 ```
 
 ---
@@ -118,7 +118,7 @@ ci3-htmx-component/
 
 ## 🤝 Kontribusi
 
-Silakan fork, PR, atau gunakan langsung sebagai package lokal. Cukup ganti `yourvendor` jadi namespace sendiri.
+Silakan fork, PR, atau gunakan langsung sebagai package lokal. Cukup ganti `ibroid` jadi namespace sendiri.
 
 ---
 
