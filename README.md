@@ -1,6 +1,6 @@
 # CI3 HTMX Component
 
-Mini framework Livewire-like untuk CodeIgniter 3 menggunakan HTMX with Painless javascript. Support stateful components, nested component, dan action dll.
+Mini framework Livewire-like untuk CodeIgniter 3 menggunakan HTMX with Painless javascript. Support stateful components, nested component, action dll.
 
 ## 🚀 Fitur
 
