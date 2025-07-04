@@ -1,4 +1,5 @@
 <?php
+
 namespace CI3Htmx\Controller;
 
 use CI3Htmx\Component;

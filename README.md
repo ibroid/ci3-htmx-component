@@ -38,14 +38,16 @@ application/views/components/_wrapper.php
 
 ### 4. Tambahkan routing controller
 
-Tambahkan file ini ke `application/controllers`:
+Buat class controller dibawah ini:
 
 ```php
-// HtmxComponent.php
-require_once APPPATH . 'vendor/ibroid/ci3-htmx-component/src/Controller/HtmxComponent.php';
+// controllers/Htmx_action.php
+use use CI3Htmx\Controller\HtmxAction;
+class Htmx_action extends CI3Htmx\Controller\HtmxAction {}
 
-// HtmxAction.php
-require_once APPPATH . 'vendor/ibroid/ci3-htmx-component/src/Controller/HtmxAction.php';
+// controllers/Htmx_component.php
+use CI3Htmx\Controller\HtmxComponent;
+class Htmx_component extends HtmxComponent {};
 ```
 
 ---
@@ -55,37 +57,59 @@ require_once APPPATH . 'vendor/ibroid/ci3-htmx-component/src/Controller/HtmxActi
 ### 1. Buat komponen: `Counter.php`
 
 ```php
+
 namespace App\Components;
 
 use CI3Htmx\Component;
 
 class Counter extends Component
 {
-    public $count = 0;
+  public $count = 0;
 
-    public function increment()
-    {
-        $this->count++;
-    }
+  public function increment()
+  {
+    $this->count++;
+  }
 
-    public function render(): string
-    {
-        return $this->renderWrapper(view('components/counter', [
-            'count' => $this->count
-        ], true));
-    }
+  public function render(): string
+  {
+    $this->initIds();
+
+    return $this->renderWrapper(
+      $this->renderContent()
+    );
+  }
+
+  public function renderContent(): string
+  {
+    return $this->view('components/counter', [
+      'count' => $this->count
+    ]);
+  }
 }
+
 ```
 
 ### 2. View komponen: `application/views/components/counter.php`
 
 ```php
 <div>
-    <h3>Jumlah: <?= $count ?></h3>
+  <h3>Jumlah: <?= $count ?></h3>
 
-    <button hx-post="/htmx_action/Counter/increment" hx-target="closest div" hx-swap="outerHTML">
-        Tambah
-    </button>
+  <button
+    hx-include="closest .htmx-component-wrapper"
+    hx-post="/htmx_action/Counter/increment"
+    hx-target="#<?= $state_id ?>"
+    hx-swap="outerHTML">
+    Tambah
+  </button>
+</div>
+```
+
+### 3. Load komponen
+```php
+<div>
+    <?= App\Components\Counter::load; ?>
 </div>
 ```
 

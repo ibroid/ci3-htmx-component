@@ -1,36 +1,41 @@
 <?php
+
 namespace CI3Htmx\Controller;
 
 use CI3Htmx\Component;
 
 class HtmxAction extends \CI_Controller
 {
-    public function _remap(string $component, array $params = []): void
+    public function _remap(string $componentName, array $params = []): void
     {
-        $method = $params[0] ?? null;
-        $className = ucfirst($component);
-        $fqcn = "App\\Components\\{$className}";
+        $componentClass = "App\\Components\\" . ucfirst($componentName);
 
-        if (!class_exists($fqcn) || !$method) {
+        if (!class_exists($componentClass)) {
             show_404();
             return;
         }
 
-        $this->load->library('session');
+        $stateId = $this->input->post('state_id');
+        $method  = $params[0] ?? null;
 
-        $instance = new $fqcn();
-        $instance->setProps($this->input->post() ?? []);
-
-        try {
-            if (method_exists($instance, $method)) {
-                call_user_func_array([$instance, $method], array_slice($params, 1));
-            } else {
-                throw new \Exception("Method {$method} not found in {$fqcn}");
-            }
-        } catch (\Throwable $e) {
-            $instance->error = $e->getMessage();
+        if (!$stateId || !$method) {
+            show_error("State ID or method not provided", 400);
+            return;
         }
 
-        echo $instance->render();
+        $instance = new $componentClass();
+        $instance->setStateKey($stateId);
+        $instance->loadStateFromSession();
+
+        if (!method_exists($instance, $method)) {
+            show_error("Method {$method} not found", 404);
+            return;
+        }
+
+        call_user_func([$instance, $method]);
+
+        $instance->persistState();
+
+        echo $instance->renderComponentOnly();
     }
 }

@@ -1,22 +1,20 @@
-<?php
-/** @var string $state_id */
-/** @var string $component */
-/** @var string $csrf_name */
-/** @var string $csrf_hash */
-/** @var string $error_html */
-/** @var string $loading_html */
-/** @var string $slot */
-?>
+<div id="<?= $wrapper_id ?>"
+    class="htmx-component-wrapper"
+    hx-target="#<?= $state_id ?>"
+    hx-swap="outerHTML">
 
-<div id="<?= $state_id ?>" hx-target="this" hx-swap="outerHTML" class="htmx-component-wrapper">
-
-    <?= $loading_html ?>
+    <div class="htmx-indicator"><?= $loading_html ?? 'Memuat...' ?></div>
 
     <input type="hidden" name="state_id" value="<?= $state_id ?>">
     <input type="hidden" name="component" value="<?= $component ?>">
     <input type="hidden" name="<?= $csrf_name ?>" value="<?= $csrf_hash ?>">
 
-    <?= $error_html ?>
+    <?php if (!empty($error_html)): ?>
+        <?= $error_html ?>
+    <?php endif; ?>
 
-    <?= $slot ?>
+    <div id="<?= $state_id ?>">
+        <?= $slot ?>
+    </div>
+
 </div>
