@@ -140,12 +140,6 @@ ci3-htmx-component/
 
 ---
 
-## 🤝 Kontribusi
-
-Silakan fork, PR, atau gunakan langsung sebagai package lokal. Cukup ganti `ibroid` jadi namespace sendiri.
-
----
-
 ## ⚠️ Catatan
 
 - Package ini dirancang untuk project legacy **CodeIgniter 3**
