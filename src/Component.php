@@ -7,6 +7,7 @@ abstract class Component
     public $error = null;
     protected $props = [];
     protected $stateKey;
+    protected ?string $wrapperId = null;
 
     public function setProps(array $props = []): void
     {
@@ -18,9 +19,20 @@ abstract class Component
         }
     }
 
-    protected function persistState(): void
+    public function persistState(): void
     {
-        $_SESSION['htmx_components'][$this->stateKey] = $this->dehydrateToSession();
+        if (!$this->stateKey) {
+            throw new \Exception("State key is not set.");
+        }
+
+        $data = [];
+
+        foreach ((new \ReflectionObject($this))->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
+            $name = $prop->getName();
+            $data[$name] = $this->$name;
+        }
+
+        $_SESSION['htmx_components'][$this->stateKey] = $data;
     }
 
     protected function hydrateFromSession(array $state): void
@@ -44,15 +56,11 @@ abstract class Component
 
     protected function generateStateId(): string
     {
-        return uniqid('cmp_', true);
+        return 'cmp_' . str_replace('.', '', uniqid('', true));
     }
 
     public function renderWrapper(string $html): string
     {
-        if (!$this->stateKey) {
-            $this->stateKey = $this->generateStateId();
-        }
-
         $this->persistState();
         $CI = &get_instance();
         $csrfName = $CI->security->get_csrf_token_name();
@@ -69,6 +77,7 @@ abstract class Component
 
         return $CI->load->view('components/_wrapper', [
             'state_id'      => $this->stateKey,
+            'wrapper_id'    => $this->wrapperId,
             'component'     => $component,
             'csrf_name'     => $csrfName,
             'csrf_hash'     => $csrfHash,
@@ -91,5 +100,68 @@ abstract class Component
 
     public function mount(array $params = []): void {}
 
+    protected function initState(): void
+    {
+        if (!$this->stateKey) {
+            $this->stateKey = $this->generateStateId();
+        }
+    }
+
     abstract public function render(): string;
+
+    protected function view(string $path, array $data = []): string
+    {
+        $CI = &get_instance();
+        $data['state_id'] = $this->stateKey; // inject otomatis
+        return $CI->load->view($path, $data, true);
+    }
+
+    public function renderContent(): string
+    {
+        $CI = &get_instance();
+        return $this->view('components/' . strtolower($this->componentName), []);
+    }
+
+    protected function initIds(): void
+    {
+        if (!$this->stateKey) {
+            $this->stateKey = 'cmp_' . bin2hex(random_bytes(8));
+        }
+
+        if (!$this->wrapperId) {
+            $this->wrapperId = 'wrap_' . substr($this->stateKey, 4); // cocokkan dgn cmp_xxx
+        }
+    }
+
+    public function renderComponentOnly(): string
+    {
+        $this->initIds(); // pastikan state_id dan wrapper_id tersedia
+
+        return '<div id="' . $this->stateKey . '">' . $this->renderContent() . '</div>';
+    }
+
+    public function setStateKey(string $key): void
+    {
+        $this->stateKey = $key;
+        $this->wrapperId = 'wrap_' . substr($key, 4); // cocokkan format wrapper ID
+    }
+
+    public function loadStateFromSession(): void
+    {
+        if (!$this->stateKey) {
+            throw new \Exception("State key is not set.");
+        }
+
+        if (!isset($_SESSION['htmx_components'][$this->stateKey])) {
+            return;
+        }
+
+        $data = $_SESSION['htmx_components'][$this->stateKey];
+
+        foreach ($data as $key => $value) {
+            if (property_exists($this, $key)) {
+                $this->$key = $value;
+            }
+        }
+    }
 }
