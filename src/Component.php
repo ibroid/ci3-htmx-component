@@ -4,18 +4,55 @@ namespace CI3Htmx;
 
 abstract class Component
 {
-    public $error = null;
-    protected $props = [];
-    protected $stateKey;
+    protected ?string $stateKey = null;
     protected ?string $wrapperId = null;
+    protected string $componentName = '';
 
-    public function setProps(array $props = []): void
+    public function __construct()
     {
-        $this->props = $props;
-        $this->stateKey = $props['state_id'] ?? null;
+        $this->componentName = (new \ReflectionClass($this))->getShortName();
+    }
 
-        if ($this->stateKey && isset($_SESSION['htmx_components'][$this->stateKey])) {
-            $this->hydrateFromSession($_SESSION['htmx_components'][$this->stateKey]);
+    public static function load(array $props = []): string
+    {
+        $instance = new static();
+
+        foreach ($props as $key => $value) {
+            if (property_exists($instance, $key)) {
+                $instance->$key = $value;
+            }
+        }
+
+        $instance->stateKey = $instance->generateStateId();
+        $instance->wrapperId = 'wrap_' . substr($instance->stateKey, 4);
+        $instance->persistState();
+
+        return $instance->render();
+    }
+
+    public function setStateKey(string $key): void
+    {
+        $this->stateKey = $key;
+        $this->wrapperId = 'wrap_' . substr($key, 4);
+    }
+
+    public function getStateKey(): ?string
+    {
+        return $this->stateKey;
+    }
+
+    public function loadStateFromSession(): void
+    {
+        if (!$this->stateKey || !isset($_SESSION['htmx_components'][$this->stateKey])) {
+            return;
+        }
+
+        $data = $_SESSION['htmx_components'][$this->stateKey];
+
+        foreach ($data as $key => $value) {
+            if (property_exists($this, $key)) {
+                $this->$key = $value;
+            }
         }
     }
 
@@ -35,133 +72,80 @@ abstract class Component
         $_SESSION['htmx_components'][$this->stateKey] = $data;
     }
 
-    protected function hydrateFromSession(array $state): void
-    {
-        foreach ($state as $prop => $value) {
-            if (property_exists($this, $prop)) {
-                $this->$prop = $value;
-            }
-        }
-    }
-
-    protected function dehydrateToSession(): array
-    {
-        $ref = new \ReflectionClass($this);
-        $state = [];
-        foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
-            $state[$prop->getName()] = $this->{$prop->getName()};
-        }
-        return $state;
-    }
-
     protected function generateStateId(): string
     {
         return 'cmp_' . str_replace('.', '', uniqid('', true));
     }
 
-    public function renderWrapper(string $html): string
+    public function render(): string
     {
-        $this->persistState();
-        $CI = &get_instance();
-        $csrfName = $CI->security->get_csrf_token_name();
-        $csrfHash = $CI->security->get_csrf_hash();
-        $component = (new \ReflectionClass($this))->getShortName();
+        $html = $this->renderContent();
 
-        $loadingHtml = method_exists($this, 'renderLoading')
-            ? $this->renderLoading()
-            : '<div class="htmx-indicator">Memuat...</div>';
+        $csrfName = defined('CI_VERSION') ? $this->csrfName() : 'csrf_token';
+        $csrfHash = defined('CI_VERSION') ? $this->csrfHash() : '';
 
-        $errorHtml = ($this->error && method_exists($this, 'renderError'))
-            ? $this->renderError($this->error)
-            : ($this->error ? htmlspecialchars($this->error) : '');
+        ob_start();
+?>
+        <div id="<?= esc($this->wrapperId) ?>" class="htmx-component-wrapper" hx-target="this" hx-swap="replace">
+            <div class="htmx-indicator">Memuat...</div>
 
-        return $CI->load->view('components/_wrapper', [
-            'state_id'      => $this->stateKey,
-            'wrapper_id'    => $this->wrapperId,
-            'component'     => $component,
-            'csrf_name'     => $csrfName,
-            'csrf_hash'     => $csrfHash,
-            'slot'          => $html,
-            'error_html'    => $errorHtml,
-            'loading_html'  => $loadingHtml,
-        ], true);
+            <input type="hidden" name="state_id" value="<?= esc($this->stateKey) ?>">
+            <input type="hidden" name="component" value="<?= esc($this->componentName) ?>">
+            <input type="hidden" name="<?= esc($csrfName) ?>" value="<?= esc($csrfHash) ?>">
+
+            <?= $html ?>
+        </div>
+<?php
+        return ob_get_clean();
     }
 
-    public static function load(array $params = []): string
+    protected function csrfName(): string
     {
-        $CI = &get_instance();
-        $CI->load->library('session');
-
-        $instance = new static();
-        $instance->mount($params);
-
-        return $instance->render();
+        return config_item('csrf_token_name') ?? 'csrf_token';
     }
 
-    public function mount(array $params = []): void {}
-
-    protected function initState(): void
+    protected function csrfHash()
     {
-        if (!$this->stateKey) {
-            $this->stateKey = $this->generateStateId();
-        }
-    }
-
-    abstract public function render(): string;
-
-    protected function view(string $path, array $data = []): string
-    {
-        $CI = &get_instance();
-        $data['state_id'] = $this->stateKey; // inject otomatis
-        return $CI->load->view($path, $data, true);
-    }
-
-    public function renderContent(): string
-    {
-        $CI = &get_instance();
-        return $this->view('components/' . strtolower($this->componentName), []);
-    }
-
-    protected function initIds(): void
-    {
-        if (!$this->stateKey) {
-            $this->stateKey = 'cmp_' . bin2hex(random_bytes(8));
-        }
-
-        if (!$this->wrapperId) {
-            $this->wrapperId = 'wrap_' . substr($this->stateKey, 4); // cocokkan dgn cmp_xxx
-        }
+        return $this->getCI()->security->get_csrf_hash() ?? null;
     }
 
     public function renderComponentOnly(): string
     {
-        $this->initIds(); // pastikan state_id dan wrapper_id tersedia
-
-        return '<div id="' . $this->stateKey . '">' . $this->renderContent() . '</div>';
+        return $this->renderContent();
     }
 
-    public function setStateKey(string $key): void
+    abstract public function renderContent(): string;
+
+    protected function renderComponentView(): string
     {
-        $this->stateKey = $key;
-        $this->wrapperId = 'wrap_' . substr($key, 4); // cocokkan format wrapper ID
+        $CI = $this->getCI();
+
+        $viewPath = APPPATH . 'views/components/' . $this->componentName . '.view.php';
+
+        if (!file_exists($viewPath)) {
+            throw new \Exception("Component view file not found: {$viewPath}");
+        }
+
+        $class = new \ReflectionClass($this);
+        $path  = dirname($class->getFileName());
+
+        // Ekstrak semua properti publik
+        foreach ((new \ReflectionObject($this))->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
+            $name = $prop->getName();
+            $$name = $this->$name;
+        }
+
+        // Sistem vars
+        $state_id  = $this->stateKey;
+        $component = $this->componentName;
+
+        ob_start();
+        include $viewPath;
+        return ob_get_clean();
     }
 
-    public function loadStateFromSession(): void
+    protected function getCI()
     {
-        if (!$this->stateKey) {
-            throw new \Exception("State key is not set.");
-        }
-
-        if (!isset($_SESSION['htmx_components'][$this->stateKey])) {
-            return;
-        }
-
-        $data = $_SESSION['htmx_components'][$this->stateKey];
-
-        foreach ($data as $key => $value) {
-            if (property_exists($this, $key)) {
-                $this->$key = $value;
-            }
-        }
+        return get_instance(); // Untuk akses $this->input, $this->security, dll
     }
 }

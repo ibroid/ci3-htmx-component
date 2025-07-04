@@ -8,7 +8,10 @@
   "autoload": {
     "psr-4": {
       "CI3Htmx\\": "src/"
-    }
+    },
+    "files": [
+      "src/helpers.php"
+    ]
   },
   "extra": {
     "ci3htmx-view-path": "views/"
